@@ -6,7 +6,7 @@
 import streamlit as st
 import pandas as pd
 import requests
-import plotly.express as px
+
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -35,7 +35,7 @@ st.caption(
 
 
 # ============================================
-# 3. 한국 시간 기준 '어제' 날짜 계산
+# 3. 한국 시간 기준으로 '어제' 계산
 # ============================================
 
 KST = ZoneInfo("Asia/Seoul")
@@ -45,9 +45,11 @@ now_kst = datetime.now(KST)
 yesterday_kst = now_kst - timedelta(days=1)
 
 # KOBIS API용 날짜
+# 예: 20260908
 target_date = yesterday_kst.strftime("%Y%m%d")
 
 # 화면 표시용 날짜
+# 예: 2026년 09월 08일
 display_date = yesterday_kst.strftime("%Y년 %m월 %d일")
 
 
@@ -69,7 +71,7 @@ API_URL = (
 def get_boxoffice(target_dt):
 
     # ----------------------------------------
-    # Streamlit Secrets에서 인증키 가져오기
+    # Streamlit Cloud Secrets에서 인증키 가져오기
     # ----------------------------------------
 
     try:
@@ -106,7 +108,7 @@ def get_boxoffice(target_dt):
         response = requests.get(
             API_URL,
             params=params,
-            timeout=10
+            timeout=15
         )
 
         response.raise_for_status()
@@ -123,20 +125,21 @@ def get_boxoffice(target_dt):
             "data": None
         }
 
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException:
 
         return {
             "success": False,
             "error_type": "network",
             "message": (
-                "KOBIS API에 접속하지 못했습니다."
+                "KOBIS API에 접속하지 못했습니다. "
+                "잠시 후 다시 실행해 주세요."
             ),
             "data": None
         }
 
 
     # ========================================
-    # 6. JSON 데이터 변환
+    # 6. JSON 변환
     # ========================================
 
     try:
@@ -149,8 +152,8 @@ def get_boxoffice(target_dt):
             "success": False,
             "error_type": "json",
             "message": (
-                "KOBIS API가 올바른 JSON 데이터를 "
-                "반환하지 않았습니다."
+                "KOBIS API에서 올바른 JSON 데이터를 "
+                "받지 못했습니다."
             ),
             "data": None
         }
@@ -171,14 +174,14 @@ def get_boxoffice(target_dt):
                 ""
             )
 
-            fault_string = fault_info.get(
+            fault_message = fault_info.get(
                 "message",
                 ""
             )
 
-            if not fault_string:
+            if not fault_message:
 
-                fault_string = fault_info.get(
+                fault_message = fault_info.get(
                     "faultString",
                     ""
                 )
@@ -193,10 +196,10 @@ def get_boxoffice(target_dt):
                     f"\n\n오류 코드: {fault_code}"
                 )
 
-            if fault_string:
+            if fault_message:
 
                 error_message += (
-                    f"\n\n오류 내용: {fault_string}"
+                    f"\n\n오류 내용: {fault_message}"
                 )
 
         else:
@@ -250,7 +253,7 @@ def get_boxoffice(target_dt):
             "success": False,
             "error_type": "empty",
             "message": (
-                "해당 날짜의 박스오피스 데이터가 없습니다."
+                f"{display_date}의 박스오피스 데이터가 없습니다."
             ),
             "data": None
         }
@@ -269,14 +272,14 @@ def get_boxoffice(target_dt):
 
 
 # ============================================
-# 10. API 실행
+# 10. API 호출
 # ============================================
 
 result = get_boxoffice(target_date)
 
 
 # ============================================
-# 11. 오류 처리
+# 11. API 오류 처리
 # ============================================
 
 if not result["success"]:
@@ -298,19 +301,19 @@ if not result["success"]:
 
         st.info(
             """
-            ### 🔐 KOBIS 인증키 확인
+            ### 🔐 KOBIS 인증키를 확인하세요
 
             Streamlit Cloud에서
 
             **Settings → Secrets**
 
-            로 들어간 뒤 아래처럼 입력하세요.
+            로 들어가서 다음과 같이 입력하세요.
 
             ```toml
             KOBIS_KEY = "본인의_실제_KOBIS_인증키"
             ```
 
-            ⚠️ 실제 인증키는 `main.py`에 입력하지 않습니다.
+            인증키를 `main.py`에 직접 넣으면 안 됩니다.
             """
         )
 
@@ -323,10 +326,11 @@ if not result["success"]:
 
         st.info(
             """
-            ### 🔑 KOBIS 인증키를 확인하세요.
+            ### 🔑 KOBIS 인증키 오류
 
-            KOBIS에서 인증키가 잘못된 경우
-            `faultInfo` 오류가 반환될 수 있습니다.
+            KOBIS에서 반환한 오류 내용을 확인하세요.
+
+            인증키가 정확하게 등록되어 있는지 확인하세요.
             """
         )
 
@@ -341,42 +345,8 @@ if not result["success"]:
             f"""
             ### 📅 데이터 확인
 
-            현재 조회 날짜는 **{display_date}**입니다.
+            조회 날짜: **{display_date}**
 
-            해당 날짜의 KOBIS 일별 박스오피스
-            데이터가 아직 없을 수 있습니다.
-            """
-        )
-
-
-    # ----------------------------------------
-    # 네트워크 오류
-    # ----------------------------------------
-
-    elif result["error_type"] == "network":
-
-        st.info(
-            """
-            ### 🌐 네트워크 확인
-
-            인터넷 연결이나 KOBIS API 서버 상태를
-            확인한 후 다시 실행해 주세요.
-            """
-        )
-
-
-    st.stop()
-
-
-# ============================================
-# 12. DataFrame 생성
-# ============================================
-
-movie_list = result["data"]
-
-df = pd.DataFrame(movie_list)
-
-
-# ============================================
-# 13. 숫자 데이터 숫자로 변환
-# ====
+            해당 날짜의 KOBIS 박스오피스 데이터가
+            아직 제공되지 않았을 수 있습니다.
+            ""
