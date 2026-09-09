@@ -35,7 +35,7 @@ st.caption(
 
 
 # ============================================
-# 3. 한국 시간 기준 날짜 계산
+# 3. 한국 시간
 # ============================================
 
 KST = ZoneInfo("Asia/Seoul")
@@ -64,10 +64,12 @@ selected_date = st.date_input(
 
 
 # ============================================
-# 5. 선택한 날짜 변환
+# 5. 날짜 변환
 # ============================================
 
-target_date = selected_date.strftime("%Y%m%d")
+target_date = selected_date.strftime(
+    "%Y%m%d"
+)
 
 selected_display_date = selected_date.strftime(
     "%Y년 %m월 %d일"
@@ -101,6 +103,7 @@ def get_boxoffice(target_dt):
     # ----------------------------------------
 
     try:
+
         api_key = st.secrets["KOBIS_KEY"]
 
     except Exception:
@@ -133,6 +136,7 @@ def get_boxoffice(target_dt):
 
         response.raise_for_status()
 
+
     except requests.exceptions.Timeout:
 
         return {
@@ -141,6 +145,7 @@ def get_boxoffice(target_dt):
             "message": "KOBIS API 요청 시간이 초과되었습니다.",
             "data": None
         }
+
 
     except requests.exceptions.RequestException:
 
@@ -160,6 +165,7 @@ def get_boxoffice(target_dt):
 
         result = response.json()
 
+
     except ValueError:
 
         return {
@@ -171,12 +177,13 @@ def get_boxoffice(target_dt):
 
 
     # ========================================
-    # KOBIS API 오류 확인
+    # 8. KOBIS API 오류
     # ========================================
 
     if "faultInfo" in result:
 
         fault_info = result["faultInfo"]
+
 
         if isinstance(fault_info, dict):
 
@@ -197,7 +204,10 @@ def get_boxoffice(target_dt):
                     ""
                 )
 
-            message = "KOBIS API 오류가 발생했습니다."
+            message = (
+                "KOBIS API 오류가 발생했습니다."
+            )
+
 
             if fault_code:
 
@@ -205,11 +215,13 @@ def get_boxoffice(target_dt):
                     f"\n오류 코드: {fault_code}"
                 )
 
+
             if fault_message:
 
                 message += (
                     f"\n오류 내용: {fault_message}"
                 )
+
 
         else:
 
@@ -228,7 +240,7 @@ def get_boxoffice(target_dt):
 
 
     # ========================================
-    # boxOfficeResult 확인
+    # 9. 박스오피스 결과 확인
     # ========================================
 
     boxoffice_result = result.get(
@@ -247,7 +259,7 @@ def get_boxoffice(target_dt):
 
 
     # ========================================
-    # 영화 목록
+    # 10. 영화 목록
     # ========================================
 
     movie_list = boxoffice_result.get(
@@ -267,7 +279,7 @@ def get_boxoffice(target_dt):
 
 
     # ========================================
-    # 정상 반환
+    # 정상 결과
     # ========================================
 
     return {
@@ -279,14 +291,16 @@ def get_boxoffice(target_dt):
 
 
 # ============================================
-# 8. API 실행
+# 11. API 실행
 # ============================================
 
-result = get_boxoffice(target_date)
+result = get_boxoffice(
+    target_date
+)
 
 
 # ============================================
-# 9. 오류 처리
+# 12. 오류 처리
 # ============================================
 
 if not result["success"]:
@@ -356,16 +370,18 @@ if not result["success"]:
 
 
 # ============================================
-# 10. DataFrame 생성
+# 13. DataFrame 생성
 # ============================================
 
 movie_list = result["data"]
 
-df = pd.DataFrame(movie_list)
+df = pd.DataFrame(
+    movie_list
+)
 
 
 # ============================================
-# 11. 숫자 데이터 변환
+# 14. 숫자 데이터 변환
 # ============================================
 
 numeric_columns = [
@@ -395,7 +411,7 @@ for column in numeric_columns:
 
 
 # ============================================
-# 12. 현재 순위 기준 정렬
+# 15. 현재 순위 기준 정렬
 # ============================================
 
 df = (
@@ -408,7 +424,7 @@ df = (
 
 
 # ============================================
-# 13. 1위 영화
+# 16. 1위 영화 정보
 # ============================================
 
 first_movie = df.iloc[0]
@@ -431,7 +447,7 @@ first_screen_count = int(
 
 
 # ============================================
-# 14. 선택 날짜 박스오피스
+# 17. 선택 날짜 박스오피스
 # ============================================
 
 st.divider()
@@ -442,7 +458,7 @@ st.header(
 
 
 # ============================================
-# 15. 1위 영화
+# 18. 1위 영화
 # ============================================
 
 st.markdown(
@@ -451,7 +467,7 @@ st.markdown(
 
 
 # ============================================
-# 16. 1위 정보
+# 19. 1위 영화 정보
 # ============================================
 
 col1, col2, col3 = st.columns(3)
@@ -485,7 +501,7 @@ st.divider()
 
 
 # ============================================
-# 17. 관객수 상위 5편
+# 20. 관객수 상위 5편
 # ============================================
 
 st.subheader(
@@ -494,7 +510,7 @@ st.subheader(
 
 
 # ============================================
-# 18. 관객수가 많은 영화 5편 선택
+# 21. 관객수 기준 상위 5편 선정
 # ============================================
 
 top5 = (
@@ -508,11 +524,11 @@ top5 = (
 
 
 # ============================================
-# 19. 관객수 오름차순 정렬
+# 22. 관객수 오름차순
 #
-# 적은 영화
-#     ↓
-# 많은 영화
+# 적은 관객수
+#       ↓
+# 많은 관객수
 # ============================================
 
 top5 = (
@@ -525,71 +541,121 @@ top5 = (
 
 
 # ============================================
-# 20. 최대 관객수
+# 23. 그래프용 데이터
 # ============================================
 
-max_audience = int(
-    top5["audiCnt"].max()
+chart_df = top5[
+    [
+        "movieNm",
+        "audiCnt"
+    ]
+].copy()
+
+
+# ============================================
+# 24. 관객수 표시용 텍스트
+# ============================================
+
+chart_df["관객수"] = (
+    chart_df["audiCnt"]
+    .apply(
+        lambda x: f"{int(x):,}명"
+    )
 )
 
-if max_audience <= 0:
 
-    max_audience = 1
+# ============================================
+# 25. Vega-Lite 차트
+#
+# 마우스를 막대에 올리면
+# 영화명 + 관객수가 표시됩니다.
+# ============================================
+
+chart_spec = {
+
+    "mark": {
+        "type": "bar",
+        "cornerRadiusEnd": 4
+    },
+
+    "encoding": {
+
+        # ------------------------------------
+        # X축 = 관객수
+        # ------------------------------------
+
+        "x": {
+            "field": "audiCnt",
+            "type": "quantitative",
+            "title": "관객수",
+            "axis": {
+                "format": ",d"
+            }
+        },
+
+
+        # ------------------------------------
+        # Y축 = 영화명
+        # 오름차순 유지
+        # ------------------------------------
+
+        "y": {
+            "field": "movieNm",
+            "type": "nominal",
+            "title": "영화",
+            "sort": {
+                "field": "audiCnt",
+                "order": "ascending"
+            }
+        },
+
+
+        # ------------------------------------
+        # 마우스를 올렸을 때 표시할 정보
+        # ------------------------------------
+
+        "tooltip": [
+
+            {
+                "field": "movieNm",
+                "type": "nominal",
+                "title": "영화"
+            },
+
+            {
+                "field": "audiCnt",
+                "type": "quantitative",
+                "title": "관객수",
+                "format": ",d"
+            }
+
+        ]
+
+    },
+
+    # ----------------------------------------
+    # 차트 높이
+    # ----------------------------------------
+
+    "height": 300
+
+}
+
+
+st.vega_lite_chart(
+    chart_df,
+    chart_spec,
+    use_container_width=True
+)
 
 
 # ============================================
-# 21. 상위 5편 막대그래프
+# 26. 그래프 안내
 # ============================================
 
-for _, row in top5.iterrows():
-
-    movie_name = str(
-        row["movieNm"]
-    )
-
-    audience = int(
-        row["audiCnt"]
-    )
-
-
-    # ----------------------------------------
-    # 막대 길이
-    # ----------------------------------------
-
-    progress_value = (
-        audience / max_audience
-    )
-
-
-    # ----------------------------------------
-    # 영화명 / 막대 / 관객수
-    # ----------------------------------------
-
-    col_name, col_bar, col_value = st.columns(
-        [2.5, 7, 1.5]
-    )
-
-
-    with col_name:
-
-        st.write(
-            movie_name
-        )
-
-
-    with col_bar:
-
-        st.progress(
-            progress_value
-        )
-
-
-    with col_value:
-
-        st.write(
-            f"{audience:,}명"
-        )
-
+st.caption(
+    "※ 막대에 마우스를 올리면 영화명과 관객수가 표시됩니다."
+)
 
 st.caption(
     "※ 관객수가 적은 영화부터 많은 영화 순으로 표시합니다."
@@ -600,7 +666,7 @@ st.divider()
 
 
 # ============================================
-# 22. 전체 박스오피스
+# 27. 전체 박스오피스
 # ============================================
 
 st.subheader(
@@ -609,7 +675,7 @@ st.subheader(
 
 
 # ============================================
-# 23. 표용 DataFrame 만들기
+# 28. 표용 데이터 생성
 # ============================================
 
 table_df = df[
@@ -626,7 +692,7 @@ table_df = df[
 
 
 # ============================================
-# 24. 영화명에 트로피 추가
+# 29. 영화명 트로피
 # ============================================
 
 def make_movie_name(row):
@@ -655,7 +721,7 @@ table_df["movieNm"] = table_df.apply(
 
 
 # ============================================
-# 25. 순위 변동 표시
+# 30. 순위 변동 표시
 # ============================================
 
 def make_rank_change(value):
@@ -668,12 +734,14 @@ def make_rank_change(value):
         return f"↑ {value}"
 
 
-    if value < 0:
+    elif value < 0:
 
         return f"↓ {abs(value)}"
 
 
-    return "-"
+    else:
+
+        return "-"
 
 
 table_df["rankInten"] = (
@@ -683,7 +751,7 @@ table_df["rankInten"] = (
 
 
 # ============================================
-# 26. 컬럼 이름 변경
+# 31. 컬럼명 변경
 # ============================================
 
 table_df = table_df.rename(
@@ -700,44 +768,56 @@ table_df = table_df.rename(
 
 
 # ============================================
-# 27. 숫자에 천 단위 콤마 적용
+# 32. 숫자 표시
 # ============================================
 
-table_df["관객수"] = table_df[
-    "관객수"
-].apply(
-    lambda x: f"{int(x):,}명"
+table_df["관객수"] = (
+    table_df["관객수"]
+    .apply(
+        lambda x: f"{int(x):,}명"
+    )
 )
 
 
-table_df["누적관객"] = table_df[
-    "누적관객"
-].apply(
-    lambda x: f"{int(x):,}명"
+table_df["누적관객"] = (
+    table_df["누적관객"]
+    .apply(
+        lambda x: f"{int(x):,}명"
+    )
 )
 
 
-table_df["스크린수"] = table_df[
-    "스크린수"
-].apply(
-    lambda x: f"{int(x):,}개"
+table_df["스크린수"] = (
+    table_df["스크린수"]
+    .apply(
+        lambda x: f"{int(x):,}개"
+    )
 )
 
 
 # ============================================
-# 28. 순위 변동 색상
+# 33. 순위 변동 색상
 # ============================================
 
 def color_rank_change(value):
 
-    if str(value).startswith("↑"):
-
-        return "color: red; font-weight: bold"
+    value = str(value)
 
 
-    if str(value).startswith("↓"):
+    if value.startswith("↑"):
 
-        return "color: blue; font-weight: bold"
+        return (
+            "color: red; "
+            "font-weight: bold"
+        )
+
+
+    if value.startswith("↓"):
+
+        return (
+            "color: blue; "
+            "font-weight: bold"
+        )
 
 
     return "color: gray"
@@ -753,7 +833,7 @@ styled_table = (
 
 
 # ============================================
-# 29. 전체 박스오피스 표 표시
+# 34. 전체 박스오피스 표
 # ============================================
 
 st.dataframe(
@@ -764,7 +844,7 @@ st.dataframe(
 
 
 # ============================================
-# 30. 범례
+# 35. 범례
 # ============================================
 
 st.divider()
@@ -778,7 +858,7 @@ st.markdown(
 
 
 # ============================================
-# 31. 안내
+# 36. 안내
 # ============================================
 
 st.caption(
