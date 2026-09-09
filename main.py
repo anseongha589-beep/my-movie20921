@@ -35,7 +35,7 @@ st.caption(
 
 
 # ============================================
-# 3. 한국 시간 기준으로 '어제' 계산
+# 3. 한국 시간 기준 '어제' 날짜 계산
 # ============================================
 
 KST = ZoneInfo("Asia/Seoul")
@@ -44,12 +44,8 @@ now_kst = datetime.now(KST)
 
 yesterday_kst = now_kst - timedelta(days=1)
 
-# KOBIS API용 날짜
-# 예: 20260908
 target_date = yesterday_kst.strftime("%Y%m%d")
 
-# 화면 표시용 날짜
-# 예: 2026년 09월 08일
 display_date = yesterday_kst.strftime("%Y년 %m월 %d일")
 
 
@@ -64,14 +60,14 @@ API_URL = (
 
 
 # ============================================
-# 5. KOBIS API 호출 함수
+# 5. KOBIS API 호출
 # ============================================
 
 @st.cache_data(ttl=3600)
 def get_boxoffice(target_dt):
 
     # ----------------------------------------
-    # Streamlit Cloud Secrets에서 인증키 가져오기
+    # 인증키 가져오기
     # ----------------------------------------
 
     try:
@@ -82,9 +78,7 @@ def get_boxoffice(target_dt):
         return {
             "success": False,
             "error_type": "secret",
-            "message": (
-                "KOBIS_KEY를 찾을 수 없습니다."
-            ),
+            "message": "KOBIS_KEY를 찾을 수 없습니다.",
             "data": None
         }
 
@@ -100,7 +94,7 @@ def get_boxoffice(target_dt):
 
 
     # ----------------------------------------
-    # API 요청
+    # API 호출
     # ----------------------------------------
 
     try:
@@ -125,14 +119,13 @@ def get_boxoffice(target_dt):
             "data": None
         }
 
-    except requests.exceptions.RequestException:
+    except requests.exceptions.RequestException as e:
 
         return {
             "success": False,
             "error_type": "network",
             "message": (
-                "KOBIS API에 접속하지 못했습니다. "
-                "잠시 후 다시 실행해 주세요."
+                "KOBIS API에 접속하지 못했습니다."
             ),
             "data": None
         }
@@ -152,15 +145,15 @@ def get_boxoffice(target_dt):
             "success": False,
             "error_type": "json",
             "message": (
-                "KOBIS API에서 올바른 JSON 데이터를 "
-                "받지 못했습니다."
+                "KOBIS API가 올바른 JSON 데이터를 "
+                "반환하지 않았습니다."
             ),
             "data": None
         }
 
 
     # ========================================
-    # 7. KOBIS API 오류 확인
+    # 7. API 오류 확인
     # ========================================
 
     if "faultInfo" in result:
@@ -193,22 +186,23 @@ def get_boxoffice(target_dt):
             if fault_code:
 
                 error_message += (
-                    f"\n\n오류 코드: {fault_code}"
+                    "\n오류 코드: "
+                    + str(fault_code)
                 )
 
             if fault_message:
 
                 error_message += (
-                    f"\n\n오류 내용: {fault_message}"
+                    "\n오류 내용: "
+                    + str(fault_message)
                 )
 
         else:
 
             error_message = (
-                "KOBIS API에서 오류를 반환했습니다.\n\n"
-                f"{fault_info}"
+                "KOBIS API 오류: "
+                + str(fault_info)
             )
-
 
         return {
             "success": False,
@@ -253,7 +247,8 @@ def get_boxoffice(target_dt):
             "success": False,
             "error_type": "empty",
             "message": (
-                f"{display_date}의 박스오피스 데이터가 없습니다."
+                display_date
+                + "의 박스오피스 데이터가 없습니다."
             ),
             "data": None
         }
@@ -272,14 +267,14 @@ def get_boxoffice(target_dt):
 
 
 # ============================================
-# 10. API 호출
+# 10. API 실행
 # ============================================
 
 result = get_boxoffice(target_date)
 
 
 # ============================================
-# 11. API 오류 처리
+# 11. 오류 처리
 # ============================================
 
 if not result["success"]:
@@ -293,60 +288,372 @@ if not result["success"]:
     )
 
 
-    # ----------------------------------------
-    # Secrets 오류
-    # ----------------------------------------
-
     if result["error_type"] == "secret":
 
         st.info(
-            """
-            ### 🔐 KOBIS 인증키를 확인하세요
-
-            Streamlit Cloud에서
-
-            **Settings → Secrets**
-
-            로 들어가서 다음과 같이 입력하세요.
-
-            ```toml
-            KOBIS_KEY = "본인의_실제_KOBIS_인증키"
-            ```
-
-            인증키를 `main.py`에 직접 넣으면 안 됩니다.
-            """
+            "Streamlit Cloud의 Settings → Secrets에서 "
+            "KOBIS_KEY가 등록되어 있는지 확인하세요."
         )
 
+        st.code(
+            'KOBIS_KEY = "본인의_실제_KOBIS_인증키"',
+            language="toml"
+        )
 
-    # ----------------------------------------
-    # API 인증 오류
-    # ----------------------------------------
 
     elif result["error_type"] == "fault":
 
         st.info(
-            """
-            ### 🔑 KOBIS 인증키 오류
-
-            KOBIS에서 반환한 오류 내용을 확인하세요.
-
-            인증키가 정확하게 등록되어 있는지 확인하세요.
-            """
+            "KOBIS 인증키가 정확한지 확인하세요."
         )
 
-
-    # ----------------------------------------
-    # 데이터 없음
-    # ----------------------------------------
 
     elif result["error_type"] == "empty":
 
         st.info(
-            f"""
-            ### 📅 데이터 확인
+            "조회 날짜: "
+            + display_date
+        )
 
-            조회 날짜: **{display_date}**
 
-            해당 날짜의 KOBIS 박스오피스 데이터가
-            아직 제공되지 않았을 수 있습니다.
-            ""
+    elif result["error_type"] == "network":
+
+        st.info(
+            "KOBIS API 서버에 잠시 접속하지 못했습니다. "
+            "잠시 후 다시 실행해 주세요."
+        )
+
+
+    st.stop()
+
+
+# ============================================
+# 12. DataFrame 생성
+# ============================================
+
+movie_list = result["data"]
+
+df = pd.DataFrame(movie_list)
+
+
+# ============================================
+# 13. 숫자 데이터 변환
+# ============================================
+
+numeric_columns = [
+    "rank",
+    "rankInten",
+    "audiCnt",
+    "audiAcc",
+    "scrnCnt",
+    "showCnt"
+]
+
+for column in numeric_columns:
+
+    if column in df.columns:
+
+        df[column] = pd.to_numeric(
+            df[column],
+            errors="coerce"
+        )
+
+        df[column] = df[column].fillna(0)
+
+        df[column] = df[column].astype(int)
+
+
+# ============================================
+# 14. 전체 순위 정렬
+# 1위 → 2위 → 3위
+# ============================================
+
+df = df.sort_values(
+    by="rank",
+    ascending=True
+).reset_index(drop=True)
+
+
+# ============================================
+# 15. 1위 영화 정보
+# ============================================
+
+first_movie = df.iloc[0]
+
+first_movie_name = first_movie["movieNm"]
+
+first_audience = int(
+    first_movie["audiCnt"]
+)
+
+first_total_audience = int(
+    first_movie["audiAcc"]
+)
+
+first_screen_count = int(
+    first_movie["scrnCnt"]
+)
+
+
+# ============================================
+# 16. 날짜 표시
+# ============================================
+
+st.subheader(
+    "📅 " + display_date + " 박스오피스"
+)
+
+st.caption(
+    "KOBIS 조회 날짜: "
+    + target_date
+    + " · 현재 한국 시간: "
+    + now_kst.strftime("%Y-%m-%d %H:%M")
+)
+
+
+# ============================================
+# 17. 1위 영화
+# ============================================
+
+st.markdown(
+    "## 🏆 1위 · " + first_movie_name
+)
+
+
+# ============================================
+# 18. 1위 영화 정보
+# ============================================
+
+col1, col2, col3 = st.columns(3)
+
+
+with col1:
+
+    st.metric(
+        label="🎟️ 일일 관객수",
+        value=f"{first_audience:,}명"
+    )
+
+
+with col2:
+
+    st.metric(
+        label="👥 누적 관객수",
+        value=f"{first_total_audience:,}명"
+    )
+
+
+with col3:
+
+    st.metric(
+        label="🎞️ 스크린수",
+        value=f"{first_screen_count:,}개"
+    )
+
+
+st.divider()
+
+
+# ============================================
+# 19. 관객수 상위 5편
+# ============================================
+
+st.subheader(
+    "📊 관객수 상위 5편"
+)
+
+
+# --------------------------------------------
+# 관객수가 많은 영화 5편을 먼저 선택
+# --------------------------------------------
+
+top5 = (
+    df.sort_values(
+        by="audiCnt",
+        ascending=False
+    )
+    .head(5)
+    .copy()
+)
+
+
+# --------------------------------------------
+# 선택된 5편을 관객수 적은 순으로 정렬
+# --------------------------------------------
+
+top5 = (
+    top5.sort_values(
+        by="audiCnt",
+        ascending=True
+    )
+    .reset_index(drop=True)
+)
+
+
+# ============================================
+# 20. 그래프 데이터
+# ============================================
+
+chart_data = top5[
+    [
+        "movieNm",
+        "audiCnt"
+    ]
+].copy()
+
+
+# ============================================
+# 21. 영화명을 인덱스로 설정
+# ============================================
+
+chart_data = chart_data.set_index(
+    "movieNm"
+)
+
+
+# ============================================
+# 22. 가로 막대그래프
+# ============================================
+
+st.bar_chart(
+    chart_data,
+    horizontal=True,
+    use_container_width=True,
+    x_label="관객수",
+    y_label="영화"
+)
+
+
+st.caption(
+    "※ 상위 5편을 선정한 뒤 "
+    "관객수가 적은 영화부터 많은 순으로 표시합니다."
+)
+
+
+st.divider()
+
+
+# ============================================
+# 23. 상위 5편 상세 정보
+# ============================================
+
+st.subheader(
+    "🏆 관객수 상위 5편 상세"
+)
+
+
+top5_table = top5[
+    [
+        "rank",
+        "movieNm",
+        "audiCnt",
+        "audiAcc"
+    ]
+].copy()
+
+
+top5_table = top5_table.rename(
+    columns={
+        "rank": "순위",
+        "movieNm": "영화명",
+        "audiCnt": "관객수",
+        "audiAcc": "누적관객"
+    }
+)
+
+
+# 숫자에 쉼표 추가
+top5_table["관객수"] = top5_table[
+    "관객수"
+].apply(
+    lambda x: f"{x:,}명"
+)
+
+top5_table["누적관객"] = top5_table[
+    "누적관객"
+].apply(
+    lambda x: f"{x:,}명"
+)
+
+
+st.dataframe(
+    top5_table,
+    use_container_width=True,
+    hide_index=True
+)
+
+
+st.divider()
+
+
+# ============================================
+# 24. 전체 박스오피스
+# ============================================
+
+st.subheader(
+    "🎬 전체 박스오피스"
+)
+
+
+# ============================================
+# 25. 전체 표 데이터
+# ============================================
+
+table_df = df[
+    [
+        "rank",
+        "movieNm",
+        "openDt",
+        "audiCnt",
+        "audiAcc",
+        "scrnCnt"
+    ]
+].copy()
+
+
+# ============================================
+# 26. 컬럼 이름 변경
+# ============================================
+
+table_df = table_df.rename(
+    columns={
+        "rank": "순위",
+        "movieNm": "영화명",
+        "openDt": "개봉일",
+        "audiCnt": "관객수",
+        "audiAcc": "누적관객",
+        "scrnCnt": "스크린수"
+    }
+)
+
+
+# ============================================
+# 27. 전체 박스오피스 표
+# ============================================
+
+st.dataframe(
+    table_df.style.format(
+        {
+            "순위": "{:,.0f}",
+            "관객수": "{:,.0f}",
+            "누적관객": "{:,.0f}",
+            "스크린수": "{:,.0f}"
+        }
+    ),
+    use_container_width=True,
+    hide_index=True
+)
+
+
+# ============================================
+# 28. 안내
+# ============================================
+
+st.caption(
+    "※ 관객수·누적관객·스크린수는 "
+    "KOBIS API 데이터를 숫자로 변환하여 표시합니다."
+)
+
+st.caption(
+    "※ 같은 날짜의 API 결과는 약 1시간 동안 캐시됩니다."
+)
